@@ -30,16 +30,27 @@ def bakeries():
     )
     return response
 
-@app.route('/bakeries/<int:id>')
+
+@app.route('/bakeries/<int:id>', methods=['GET', 'PATCH'])
 def bakery_by_id(id):
-
     bakery = Bakery.query.filter_by(id=id).first()
-    bakery_serialized = bakery.to_dict()
+    if request.method == 'GET':
+        bakery_serialized = bakery.to_dict()
 
-    response = make_response(
-        bakery_serialized,
-        200
-    )
+        response = make_response(
+            bakery_serialized,
+            200
+        )
+        return response
+
+    if request.method == 'PATCH':
+        for attr in request.form:
+            setattr(bakery, attr, request.form.get(attr))
+    db.session.add(bakery)
+    db.session.commit()
+
+    bakery_dict = bakery.to_dict()
+    response = make_response(bakery_dict, 200)
     return response
 
 @app.route('/baked_goods/by_price')
@@ -65,6 +76,39 @@ def most_expensive_baked_good():
         200
     )
     return response
+@app.route('/baked_goods', methods=['POST'])
+def creates_baked_goods():
+    new_baked_good = BakedGood(
+        name=request.form.get("name"),
+        price=request.form.get("price"),
+        bakery_id=request.form.get("bakery_id")
+    )
 
+    db.session.add(new_baked_good)
+    db.session.commit()
+
+    new_baked_good_dict = new_baked_good.to_dict()
+    response = make_response(new_baked_good_dict, 201)
+    return response 
+
+@app.route('/baked_goods/<int:id>', methods=['DELETE'])
+def delete_baked_goods(id):
+    bakedGood = BakedGood.query.filter_by(id=id).first()
+    if bakedGood:
+        db.session.delete(bakedGood)
+        db.session.commit()
+        response_body = {
+            "delete_successful": True,
+            "message": "Bakery Successfully deleted"
+        }
+        response = make_response(response_body, 200)
+
+    else:
+        response_body = {
+            "delete_successful": False,
+            "message": "Bakery Not Found"
+        }
+        response = make_response(response_body, 404)
+    return response      
 if __name__ == '__main__':
     app.run(port=5555, debug=True)
